@@ -4,34 +4,60 @@ const { program } = require('commander');
 program
   .requiredOption('-i, --input <file>', 'Input JSON file')
   .option('-o, --output <file>', 'Output file')
-  .option('-d, --display', 'Display output in console');
+  .option('-d, --display', 'Display output in console')
+  .option('-c, --cylinders', 'Display number of cylinders')
+  .option('-m, --mpg <number>', 'Filter cars with mpg less than specified value');
 
 program.parse(process.argv);
-
 const options = program.opts();
 
-// 1️⃣ Перевірка наявності обов’язкового параметра
 if (!options.input) {
   console.error("Please, specify input file");
   process.exit(1);
 }
 
-// 2️⃣ Перевірка, чи існує файл
 if (!fs.existsSync(options.input)) {
   console.error("Cannot find input file");
   process.exit(1);
 }
 
-// 3️⃣ Читаємо JSON
-const data = fs.readFileSync(options.input, 'utf8');
-const jsonData = JSON.parse(data);
+let data;
+try {
+  data = fs.readFileSync(options.input, 'utf8');
+} catch (err) {
+  console.error("Error reading input file:", err.message);
+  process.exit(1);
+}
 
-// 4️⃣ Вивід даних (поки просто тестовий)
+let jsonData;
+try {
+  jsonData = JSON.parse(data);
+} catch (err) {
+  console.error("Invalid JSON!");
+  process.exit(1);
+}
+
+let filteredData = jsonData;
+if (options.mpg) {
+  const mpgLimit = Number(options.mpg);
+  filteredData = filteredData.filter(car => car.mpg < mpgLimit);
+}
+
+const outputLines = filteredData.map(car => {
+  let line = car.model;
+  if (options.cylinders) {
+    line += ` ${car.cyl}`;
+  }
+  line += ` ${car.mpg}`;
+  return line;
+});
+
 if (options.display) {
-  console.log(jsonData);
+  outputLines.forEach(line => console.log(line));
 }
 
 if (options.output) {
-  fs.writeFileSync(options.output, JSON.stringify(jsonData, null, 2));
+  fs.writeFileSync(options.output, outputLines.join('\n'));
   console.log(`Result written to ${options.output}`);
 }
+
